@@ -7,7 +7,7 @@ async function createUsersTable() {
             name VARCHAR(100) NOT NULL,
             email VARCHAR(150) UNIQUE NOT NULL,
             created_at TIMESTAMP DEFAULT NOW()
-            )
+            );
         
         `);
 }

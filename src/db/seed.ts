@@ -44,30 +44,40 @@ async function seedUsers() {
     },
   ];
 
-  const query = `
+  const tableCreationQuery = `
+  CREATE TABLE IF NOT EXISTS users(
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(150) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+  );
+  `;
+  const insertQuery = `
   INSERT INTO users (name, email) VALUES ($1, $2);
   `;
+
   try {
     await pool.connect();
+    await pool.query(tableCreationQuery);
 
-    users.forEach(async (user) => {
-      await pool.query(query, [user.name, user.email]);
-    });
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let i = 0; i < users.length; i++) {
+      const user = users[i];
+
+      await pool.query(insertQuery, [user?.name, user?.email]);
+    }
 
     console.log("🌱 users seeded successfully!");
-   
-  } catch {
+  } catch (err) {
+    console.error(err);
     console.error("Seeding users failed!");
-  }finally{
-     process.exit(1);
+  } finally {
+    process.exit(1);
   }
 }
 
-
-
-async function main(){
-
-    await seedUsers();
+async function main() {
+  await seedUsers();
 }
 
 main();

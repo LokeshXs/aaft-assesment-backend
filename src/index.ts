@@ -4,7 +4,7 @@ import pool from "./db";
 import { initializeDB } from "./db/init";
 import cors from "cors";
 import dotenv from "dotenv";
-
+dotenv.config();
 
 const server = express();
 const PORT = 8080;
@@ -12,7 +12,7 @@ const PORT = 8080;
 server.use(cors()); //  allow all origins
 
 // adding env 
-dotenv.config();
+
 
 // Middleware to read json body
 server.use(express.json());
