@@ -57,7 +57,7 @@ source       VARCHAR(50)
 status       VARCHAR(20)
 assigned_to  INTEGER (FK → users.id)
 created_at  TIMESTAMP
-updated_at  TIMESTAMP
+
 
 
 ```
@@ -85,8 +85,7 @@ timestamp   TIMESTAMP
 
 ## Known Limitations
 
--Duplicate detection fetches all leads
-
+- Duplicate detection fetches all leads
 - No transactions for multi-step operations
 - Indexing is not done
 - Advanced DB queries not implemented(like GROUP BY, ORDER BY)
