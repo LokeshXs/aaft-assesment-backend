@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 
 
 const server = express();
-const PORT = 3001;
+const PORT = 8080;
 
 server.use(cors()); //  allow all origins
 

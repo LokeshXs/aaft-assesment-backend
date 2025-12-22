@@ -62,9 +62,8 @@ router.post("/", async (req, res) => {
     const leadCountPerUser: Record<number, number> = {};
 
     for (const userId of allUserIds) {
-      leadCountPerUser[userId] = leadCountPerUser[userId]
-        ? leadCountPerUser[userId] + 1
-        : 0;
+      leadCountPerUser[userId] = (leadCountPerUser[userId]||0)+1;
+       
     }
 
     let minLeadsUserId = allUserIds[0];
