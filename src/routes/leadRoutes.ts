@@ -51,44 +51,45 @@ router.post("/", async (req, res) => {
     }
 
     //   Assigning the userid with least leads
-    const allRows: { id: number }[] = await getAllUsersWithLeads();
+    const allRows: { id: number; lead_id: number | null }[] =
+      await getAllUsersWithLeads();
 
     console.log(allRows);
-
-    // converting the objects to array of ids
-    const allUserIds = allRows.map((item) => item.id);
 
     // Map to store how many leads per userid
     const leadCountPerUser: Record<number, number> = {};
 
-    for (const userId of allUserIds) {
-      leadCountPerUser[userId] = (leadCountPerUser[userId]||0)+1;
-       
-    }
-
-    let minLeadsUserId = allUserIds[0];
-
-    if (!minLeadsUserId) {
-      return res.status(400).json({
-        json: "No users present to assign lead",
-      });
-    }
-
-    let minLeadCountForUserId = leadCountPerUser[minLeadsUserId];
-
-    for (const key in leadCountPerUser) {
-      if (
-        leadCountPerUser[key] &&
-        minLeadCountForUserId &&
-        leadCountPerUser[key] < minLeadCountForUserId
-      ) {
-        minLeadsUserId = Number(key);
-        minLeadCountForUserId = leadCountPerUser[key];
+    for (const { id, lead_id } of allRows) {
+      leadCountPerUser[id] ??= 0;
+      if (lead_id) {
+        leadCountPerUser[id]++;
       }
     }
 
-    console.log(minLeadsUserId);
-    console.log(minLeadCountForUserId);
+    console.log(`Lead count per user: ${JSON.stringify(leadCountPerUser)}`);
+
+    let minLeadsUserId = allRows[0]?.id;
+
+    if (!minLeadsUserId) {
+      return res.status(400).json({
+        message: "No users present to assign lead",
+      });
+    }
+    console.log(`Minimum lead user_id: ${minLeadsUserId}`);
+
+    let minLeadCountForUserId = leadCountPerUser[minLeadsUserId] || 0;
+
+    console.log(`Minimum lead count for user_id: ${minLeadCountForUserId}`);
+
+    for (const [userId, count] of Object.entries(leadCountPerUser)) {
+      if (count < minLeadCountForUserId) {
+        minLeadCountForUserId = count;
+        minLeadsUserId = Number(userId);
+      }
+    }
+
+    console.log(`Minimum lead user_id: ${minLeadsUserId}`);
+    console.log(`Minimum lead count for user_id: ${minLeadCountForUserId}`);
 
     //   creating new lead
     const result = await createLead({
@@ -141,7 +142,6 @@ router.get("/", async (req, res) => {
 
     const allLeads = await getLeadsWithActivities();
 
-    
     let filteredLeads = [...allLeads];
 
     if (status) {
@@ -260,152 +260,153 @@ router.get("/", async (req, res) => {
 
 // PUT: Update lead status
 router.put("/:id/status", async (req, res) => {
-try{
-  const leadId = Number(req.params.id);
-  const { status: newStatus } = req.body;
+  try {
+    const leadId = Number(req.params.id);
+    const { status: newStatus } = req.body;
 
-  console.log(newStatus);
-  if (!newStatus) {
-    return res.status(400).json({
-      message: "status is required",
+    console.log(newStatus);
+    if (!newStatus) {
+      return res.status(400).json({
+        message: "status is required",
+      });
+    }
+
+    // Finding the lead
+
+    const lead = await getLead(leadId);
+
+    if (!lead) {
+      return res.status(404).json({
+        message: "Lead not found",
+      });
+    }
+
+    //   Updating Lead's status
+    const allowedNextTransitions = allowedTransition[lead.status];
+
+    if (!allowedNextTransitions?.includes(newStatus)) {
+      return res.status(400).json({
+        message: `Invalid transition from ${lead.status} to ${newStatus}`,
+      });
+    }
+
+    // Update status
+    const updatedLead = await updateLeadStatus(leadId, newStatus);
+
+    // Log activity
+    await insertLeadActivity(
+      leadId,
+      `Status changed from ${lead.status} to ${newStatus}`
+    );
+
+    res.status(200).json({
+      message: "Status updated successfully",
+      lead: updatedLead,
     });
-  }
-
-  // Finding the lead
-
-  const lead = await getLead(leadId);
-
-  if (!lead) {
-    return res.status(404).json({
-      message: "Lead not found",
-    });
-  }
-
-  //   Updating Lead's status
-  const allowedNextTransitions = allowedTransition[lead.status];
-
-  if (!allowedNextTransitions?.includes(newStatus)) {
-    return res.status(400).json({
-      message: `Invalid transition from ${lead.status} to ${newStatus}`,
-    });
-  }
-
-  // Update status
-  const updatedLead = await updateLeadStatus(leadId, newStatus);
-
-  // Log activity
-  await insertLeadActivity(
-    leadId,
-    `Status changed from ${lead.status} to ${newStatus}`
-  );
-
-  res.status(200).json({
-    message: "Status updated successfully",
-    lead: updatedLead,
-  });
-}catch(err){
-   console.log("Update lead failed. Error:", err);
+  } catch (err) {
+    console.log("Update lead failed. Error:", err);
     res.status(500).json({
       message: "Internal server error",
     });
-}
+  }
 });
 
 // GET: Get the activity timeline for lead
 router.get("/:id/timeline", async (req, res) => {
- try{
- const leadId = Number(req.params.id);
+  try {
+    const leadId = Number(req.params.id);
 
-  const leadActivities = await getLeadActivities(leadId);
+    const leadActivities = await getLeadActivities(leadId);
 
-  const timeline: Record<string, (LeadActivity & { id: number })[]> = {};
+    const timeline: Record<string, (LeadActivity & { id: number })[]> = {};
 
-  leadActivities.forEach((activity) => {
-    const dateKey = new Date(activity.timestamp)
-      .toISOString()
-      .split("T")[0] as string;
+    leadActivities.forEach((activity) => {
+      const dateKey = new Date(activity.timestamp)
+        .toISOString()
+        .split("T")[0] as string;
 
-    if (!timeline[dateKey]) {
-      timeline[dateKey] = [];
-    }
+      if (!timeline[dateKey]) {
+        timeline[dateKey] = [];
+      }
 
-    timeline[dateKey].push(activity);
-  });
+      timeline[dateKey].push(activity);
+    });
 
-  res.json({
-    leadId,
-    timeline,
-  });
- }catch(err){
-   console.log("Update lead failed. Error:", err);
+    res.json({
+      leadId,
+      timeline,
+    });
+  } catch (err) {
+    console.log("Update lead failed. Error:", err);
     res.status(500).json({
       message: "Internal server error",
     });
- }
+  }
 });
 
+// POST: check duplicates
 router.post("/check-duplicate", async (req, res) => {
- try{
- const { name, email, phone } = req.body;
+  try {
+    const { name, email, phone } = req.body;
 
-  const leads = await fetchAllLeads();
+    const leads = await fetchAllLeads();
 
-  const normalizedInputs = {
-    name: normalizeName(name),
-    phone: normalizePhone(phone),
-    email: normalizeEmail(email),
-  };
+    const normalizedInputs = {
+      name: normalizeName(name),
+      phone: normalizePhone(phone),
+      email: normalizeEmail(email),
+    };
 
-  const matchesFound = [];
+    const matchesFound = [];
 
-  for (const lead of leads) {
-    let score = 0;
+    for (const lead of leads) {
+      let score = 0;
 
-    if (email && normalizeEmail(lead.email) === normalizedInputs.email) {
-      score += 40;
+      if (email && normalizeEmail(lead.email) === normalizedInputs.email) {
+        score += 40;
+      }
+
+      if (phone && normalizePhone(lead.phone) === normalizedInputs.phone) {
+        score += 40;
+      }
+
+      if (name && normalizeName(lead.name) === normalizedInputs.name) {
+        score += 20;
+      }
+
+      if (score > 0) {
+        matchesFound.push({
+          ...lead,
+          score,
+        });
+      }
     }
 
-    if (phone && normalizePhone(lead.phone) === normalizedInputs.phone) {
-      score += 40;
-    }
+    const isDuplicate = matchesFound.length > 0;
 
-    if (name && normalizeName(lead.name) === normalizedInputs.name) {
-      score += 20;
-    }
+    const confidence = isDuplicate
+      ? Math.max(
+          ...matchesFound.map((match) => {
+            const score = match.score;
 
-    if (score > 0) {
-      matchesFound.push({
-        ...lead,
-        score,
-      });
-    }
-  }
+            delete match.score;
 
-  const isDuplicate = matchesFound.length > 0;
+            return score;
+          })
+        )
+      : 0;
 
-  const confidence = isDuplicate
-    ? Math.max(
-        ...matchesFound.map((match) => {
-          const score = match.score;
-
-          delete match.score;
-
-          return score;
-        })
-      )
-    : 0;
-
-  res.status(200).json({
-    isDuplicate,
-    matches: matchesFound,
-    confidence,
-  });
- }catch(err){
-   console.log("Duplicate detection failed. Error:", err);
+    res.status(200).json({
+      isDuplicate,
+      matches: matchesFound,
+      confidence,
+    });
+  } catch (err) {
+    console.log("Duplicate detection failed. Error:", err);
     res.status(500).json({
       message: "Internal server error",
     });
- }
+  }
 });
 
 export default router;

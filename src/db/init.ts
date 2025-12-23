@@ -17,8 +17,8 @@ async function createLeadsTable() {
             CREATE TABLE IF NOT EXISTS leads(
             id SERIAL PRIMARY KEY,
             name VARCHAR(100) NOT NULL,
-            email VARCHAR(150) NOT NULL,
-            phone VARCHAR(20) NOT  NULL,
+            email VARCHAR(150) UNIQUE NOT NULL,
+            phone VARCHAR(20) UNIQUE NOT  NULL,
             source VARCHAR(50) NOT NULL,
             status VARCHAR(20) NOT NULL,
             assigned_to INTEGER REFERENCES users(id),
