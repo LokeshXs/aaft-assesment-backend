@@ -40,8 +40,8 @@ npm run dev
 
 ```bash
 id           SERIAL PRIMARY KEY
-name         VARCHAR(100)
-email        VARCHAR(150) UNIQUE
+name         VARCHAR(100) NOT NULL
+email        VARCHAR(150) UNIQUE NOT  NULL
 created_at  TIMESTAMP
 
 ```
@@ -50,11 +50,11 @@ created_at  TIMESTAMP
 
 ```bash
 id           SERIAL PRIMARY KEY
-name         VARCHAR(100)
-email        VARCHAR(150)
-phone        VARCHAR(20)
-source       VARCHAR(50)
-status       VARCHAR(20)
+name         VARCHAR(100) NOT NULL
+email        VARCHAR(150) UNIQUE NOT  NULL
+phone        VARCHAR(20) UNIQUE NOT  NULL
+source       VARCHAR(50) NOT NULL
+status       VARCHAR(20) NOT NULL
 assigned_to  INTEGER (FK → users.id)
 created_at  TIMESTAMP
 
@@ -68,7 +68,7 @@ created_at  TIMESTAMP
 id           SERIAL PRIMARY KEY
 lead_id      INTEGER (FK → leads.id)
 activity_type VARCHAR(50)
-description  TEXT
+description  TEXT NOT NULL
 timestamp   TIMESTAMP
 
 ```
